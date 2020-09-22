@@ -37,6 +37,7 @@ public:
 	ReaderWriter3MXB()
 	{
 		supportsExtension("3mxb", "3mxb format");
+		supportsExtension("3mx", "3mx format");
 	}
 
 	virtual const char* className() const { return "3mxb reader"; }
@@ -163,10 +164,65 @@ private:
 public:
 	virtual ReadResult readNode(const std::string& file, const osgDB::ReaderWriter::Options* options) const
 	{
-		std::string ext = osgDB::getLowerCaseFileExtension(file);
+		std::string ext_3mx = osgDB::getLowerCaseFileExtension(file);
+		if (!acceptsExtension(ext_3mx)) return ReadResult::FILE_NOT_HANDLED;
+
+		// ---------start 3mx-------------
+		std::string filePath = file;
+		if (ext_3mx == "3mx")
+		{
+			std::string fileName_3mx = osgDB::findDataFile(file, options);
+			if (fileName_3mx.empty()) return ReadResult::FILE_NOT_FOUND;
+
+			OSG_INFO << "Reading file " << fileName_3mx << std::endl;
+
+			std::ifstream inFile_3mx(fileName_3mx, std::ios::in | std::ios::binary);
+			if (!inFile_3mx) {
+				OSG_FATAL << "Reading file " << fileName_3mx << " failed! Can NOT open file." << std::endl;
+				return ReadResult::ERROR_IN_READING_FILE;
+			}
+
+			inFile_3mx.seekg(0, std::ios::end);
+			std::streampos pos = inFile_3mx.tellg();
+			const int len = pos;
+			inFile_3mx.seekg(0, 0);
+
+			// read file
+			neb::CJsonObject oJson_3mx;
+			{
+				// read file
+				std::string file_3mx(len, '\0');
+				inFile_3mx.read(&file_3mx[0], len);
+
+				// parse file
+				if (inFile_3mx.gcount() != len || !oJson_3mx.Parse(file_3mx))
+				{
+					OSG_FATAL << "Reading file " << fileName_3mx << " failed! Invalid file." << std::endl;
+					return ReadResult::ERROR_IN_READING_FILE;
+				}
+			}
+
+			// root path
+			// ----------multiple layers-----------
+			//int nodesNum2 = oJson_3mx["layers"].GetArraySize();
+			//for (int i = 0; i < nodesNum2; ++i)
+			//{
+			//	oJson_3mx["layers"][i].Get("root", filePath);
+			//}
+			//-------------------------
+			std::string relativePath = "";
+			oJson_3mx["layers"][0].Get("root", relativePath);
+
+			int posPath = 0;
+			posPath = filePath.find_last_of("/\\") + 1;
+			filePath = filePath.substr(0, posPath) + relativePath;
+		}
+		//-------3mx end-----------
+
+		std::string ext = osgDB::getLowerCaseFileExtension(filePath);
 		if (!acceptsExtension(ext)) return ReadResult::FILE_NOT_HANDLED;
 
-		std::string fileName = osgDB::findDataFile(file, options);
+		std::string fileName = osgDB::findDataFile(filePath, options);
 		if (fileName.empty()) return ReadResult::FILE_NOT_FOUND;
 
 		OSG_INFO << "Reading file " << fileName << std::endl;
