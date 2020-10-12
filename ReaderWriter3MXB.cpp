@@ -152,6 +152,36 @@ private:
 					resource3MXB.geometry->addPrimitiveSet(osgPrimitives);
 				}
 			}
+			else if (resource3MXB.type == "geometryBuffer" && format == "xyz")
+			{
+				oJsonResource.Get("size", bufferSize);
+				if (bufferSize)
+				{
+					resource3MXB.geometry = new osg::Geometry;
+
+					std::vector<char> buffer(bufferSize);
+					inFile.read(&buffer[0], bufferSize);
+
+					int vertCount = 0;
+					memcpy(&vertCount, buffer.data(), 4);
+
+					if (vertCount)
+					{
+						char* vertices = buffer.data() + 4;
+						osg::Vec3Array* osgVertices = new osg::Vec3Array(vertCount);
+						memcpy(&osgVertices->asVector()[0], vertices, vertCount * sizeof(float) * 3);
+						resource3MXB.geometry->setVertexArray(osgVertices);
+
+						char* colors = buffer.data() + 4 + vertCount * sizeof(float) * 3;
+						osg::Vec4Array* osgColors = new osg::Vec4Array(vertCount);
+						memcpy(&osgColors->asVector()[0], colors, vertCount * sizeof(float) * 4);
+						resource3MXB.geometry->setColorArray(osgColors, osg::Vec4Array::BIND_PER_VERTEX);
+
+						resource3MXB.geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, osgVertices->size()));
+						resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+					}
+				}
+			}
 			else
 			{
 				return false;
