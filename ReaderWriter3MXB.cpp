@@ -1,6 +1,7 @@
 #include <osg/Notify>
 #include <osg/PagedLOD>
 #include <osg/Texture2D>
+#include <osg/Point>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -105,7 +106,12 @@ private:
 			{
 				oJsonResource.Get("size", bufferSize);
 				oJsonResource.Get("texture", resource3MXB.textureId);
-
+				osg::Vec3 bbMin, bbMax;
+				for (int j = 0; j < 3; ++j)
+				{
+					oJsonResource["bbMin"].Get(j, bbMin[j]);
+					oJsonResource["bbMax"].Get(j, bbMax[j]);
+				}
 				CTMimporter ctm;
 				ctm.LoadCustom(_ctmIfstremRead, &inFile);
 				if ((int)inFile.tellg() - lastBufferOffset != bufferSize)
@@ -116,6 +122,7 @@ private:
 
 				// to osg
 				resource3MXB.geometry = new osg::Geometry;
+				resource3MXB.geometry->setInitialBound(osg::BoundingBox(bbMin, bbMax));
 
 				auto vertCount = ctm.GetInteger(CTM_VERTEX_COUNT);
 				if (vertCount)
@@ -155,9 +162,16 @@ private:
 			else if (resource3MXB.type == "geometryBuffer" && format == "xyz")
 			{
 				oJsonResource.Get("size", bufferSize);
+				osg::Vec3 bbMin, bbMax;
+				for (int j = 0; j < 3; ++j)
+				{
+					oJsonResource["bbMin"].Get(j, bbMin[j]);
+					oJsonResource["bbMax"].Get(j, bbMax[j]);
+				}
 				if (bufferSize)
 				{
 					resource3MXB.geometry = new osg::Geometry;
+					resource3MXB.geometry->setInitialBound(osg::BoundingBox(bbMin, bbMax));
 
 					std::vector<char> buffer(bufferSize);
 					inFile.read(&buffer[0], bufferSize);
@@ -173,12 +187,31 @@ private:
 						resource3MXB.geometry->setVertexArray(osgVertices);
 
 						char* colors = buffer.data() + 4 + vertCount * sizeof(float) * 3;
-						osg::Vec4Array* osgColors = new osg::Vec4Array(vertCount);
-						memcpy(&osgColors->asVector()[0], colors, vertCount * sizeof(float) * 4);
-						resource3MXB.geometry->setColorArray(osgColors, osg::Vec4Array::BIND_PER_VERTEX);
+						osg::ref_ptr<osg::Vec4bArray> osgColorsB = new osg::Vec4bArray(vertCount);
+						memcpy(&osgColorsB->asVector()[0], colors, vertCount * sizeof(char) * 4);
+						osg::Vec4Array* osgColorsF = new osg::Vec4Array(vertCount);
+						for (int k = 0; k < vertCount; ++k)
+						{
+							osgColorsF->asVector()[k].x() = osgColorsB->asVector()[k].x() / 255.0;
+							osgColorsF->asVector()[k].y() = osgColorsB->asVector()[k].y() / 255.0;
+							osgColorsF->asVector()[k].z() = osgColorsB->asVector()[k].z() / 255.0;
+							osgColorsF->asVector()[k].w() = osgColorsB->asVector()[k].w() / 255.0;
+						}
+						
+						resource3MXB.geometry->setColorArray(osgColorsF, osg::Vec4Array::BIND_PER_VERTEX);
 
 						resource3MXB.geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, osgVertices->size()));
 						resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+						//float pointSize = 10.f;
+						//if (pointSize > 0)
+						//{
+						//	osg::ref_ptr<osg::Point> point = new osg::Point;
+						//	point->setDistanceAttenuation(osg::Vec3(1.0f, 0.0f, 0.01f));
+						//	point->setSize(pointSize);
+						//	resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
+						//	resource3MXB.geometry->getOrCreateStateSet()->setAttribute(point);
+						//}
 					}
 				}
 			}
@@ -350,41 +383,54 @@ public:
 						resource3MXB.geometry->getOrCreateStateSet()->setTextureAttributeAndModes(0, mapResource3MXB[resource3MXB.textureId].texture, osg::StateAttribute::ON);
 					}
 				}
-				else
-				{
-
-				}
 			}
+			geode->setInitialBound(osg::BoundingBox(bbMin, bbMax));
 
 			int childNum = oJson["nodes"][i]["children"].GetArraySize();
-
-			osg::ref_ptr<osg::PagedLOD> pagedLOD = new osg::PagedLOD;
-			pagedLOD->setName(id);
-			pagedLOD->setRangeMode(osg::PagedLOD::PIXEL_SIZE_ON_SCREEN);
-			pagedLOD->setCenterMode(osg::PagedLOD::USER_DEFINED_CENTER);
-			pagedLOD->setCenter((bbMin + bbMax) / 2.0f);
-			pagedLOD->setRadius((bbMax - bbMin).length());
-			if (childNum)
+			if (!childNum)
 			{
-				pagedLOD->addChild(geode, 0, maxScreenDiameter);
+				// add to group
+				group->addChild(geode);
 			}
 			else
 			{
-				pagedLOD->addChild(geode, 0, 1e30);
-			}
+				osg::ref_ptr<osg::PagedLOD> pagedLOD = new osg::PagedLOD;
+				pagedLOD->setName(id);
+				pagedLOD->setRangeMode(osg::PagedLOD::PIXEL_SIZE_ON_SCREEN);
+				pagedLOD->setCenterMode(osg::PagedLOD::USER_DEFINED_CENTER);
+				pagedLOD->setCenter((bbMin + bbMax) / 2.0f);
+				pagedLOD->setRadius(sqrt((bbMax - bbMin).length2() * 0.25f / 3.f));
 
-			// children
-			for (int j = 0; j < childNum; ++j)
-			{
-				std::string childPath;
-				oJson["nodes"][i]["children"].Get(j, childPath);
-				std::string childName = osgDB::getFilePath(fileName) + "/" + childPath;
-				pagedLOD->setFileName(j + 1, childName);
-				pagedLOD->setRange(j + 1, maxScreenDiameter, 1e30);
-			}
+				if (nodeResourcesNum)
+				{
+					pagedLOD->addChild(geode, 0, maxScreenDiameter);
 
-			// add to group
-			group->addChild(pagedLOD);
+					// children
+					for (int j = 0; j < childNum; ++j)
+					{
+						std::string childPath;
+						oJson["nodes"][i]["children"].Get(j, childPath);
+						std::string childName = osgDB::getFilePath(fileName) + "/" + childPath;
+						pagedLOD->setFileName(j + 1, childName);
+						pagedLOD->setRange(j + 1, maxScreenDiameter, 1e30);
+					}
+				}
+				else
+				{
+					// children
+					for (int j = 0; j < childNum; ++j)
+					{
+						std::string childPath;
+						oJson["nodes"][i]["children"].Get(j, childPath);
+						std::string childName = osgDB::getFilePath(fileName) + "/" + childPath;
+						pagedLOD->setFileName(j, childName);
+						pagedLOD->setRange(j, maxScreenDiameter, 1e30);
+					}
+				}
+
+				// add to group
+				group->addChild(pagedLOD);
+			}
 		}
 
 		group->setName(osgDB::getNameLessExtension(fileName));
