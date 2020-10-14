@@ -278,14 +278,17 @@ public:
 			//-------------------------
 			std::string relativePath = "";
 			oJson_3mx["layers"][0].Get("root", relativePath);
-			osg::Vec3d SRSOrigin;
-			for (int j = 0; j < 3; ++j)
+			if (!oJson_3mx["layers"][0].IsNull("offset") && !oJson_3mx["layers"][0]["offset"].IsEmpty())
 			{
-				oJson_3mx["layers"][0]["SRSOrigin"].Get(j, SRSOrigin[j]);
-			}
+				osg::Vec3d offset;
+				for (int j = 0; j < 3; ++j)
+				{
+					oJson_3mx["layers"][0]["offset"].Get(j, offset[j]);
+				}
 
-			matrixTransform = new osg::MatrixTransform();
-			matrixTransform->setMatrix(osg::Matrix::translate(SRSOrigin.x(), SRSOrigin.y(), SRSOrigin.z()));
+				matrixTransform = new osg::MatrixTransform();
+				matrixTransform->setMatrix(osg::Matrix::translate(offset.x(), offset.y(), offset.z()));
+			}
 
 			int posPath = 0;
 			posPath = filePath.find_last_of("/\\") + 1;
