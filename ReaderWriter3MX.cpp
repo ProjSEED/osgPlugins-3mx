@@ -2,6 +2,7 @@
 #include <osg/PagedLOD>
 #include <osg/Texture2D>
 #include <osg/Point>
+#include <osg/MatrixTransform>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -233,6 +234,7 @@ public:
 
 		// ---------start 3mx-------------
 		std::string filePath = file;
+		osg::ref_ptr<osg::MatrixTransform> matrixTransform;
 		if (ext_3mx == "3mx")
 		{
 			std::string fileName_3mx = osgDB::findDataFile(file, options);
@@ -276,6 +278,14 @@ public:
 			//-------------------------
 			std::string relativePath = "";
 			oJson_3mx["layers"][0].Get("root", relativePath);
+			osg::Vec3d SRSOrigin;
+			for (int j = 0; j < 3; ++j)
+			{
+				oJson_3mx["layers"][0]["SRSOrigin"].Get(j, SRSOrigin[j]);
+			}
+
+			matrixTransform = new osg::MatrixTransform();
+			matrixTransform->setMatrix(osg::Matrix::translate(SRSOrigin.x(), SRSOrigin.y(), SRSOrigin.z()));
 
 			int posPath = 0;
 			posPath = filePath.find_last_of("/\\") + 1;
@@ -435,7 +445,15 @@ public:
 		}
 
 		group->setName(osgDB::getNameLessExtension(fileName));
-		return group;
+		if (matrixTransform.get())
+		{
+			matrixTransform->addChild(group);
+			return matrixTransform;
+		}
+		else
+		{
+			return group;
+		}
 	}
 };
 
