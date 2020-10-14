@@ -41,7 +41,7 @@ public:
 		supportsExtension("3mx", "3mx format");
 	}
 
-	virtual const char* className() const { return "3mxb reader"; }
+	virtual const char* className() const { return "3mx reader"; }
 
 private:
 	bool readResources(std::ifstream& inFile, neb::CJsonObject& oJsonResourcesArray, std::map<std::string, Resource3MXB>& mapResource3MXB) const
@@ -161,7 +161,9 @@ private:
 			}
 			else if (resource3MXB.type == "geometryBuffer" && format == "xyz")
 			{
+				float pointSize = 10.f;
 				oJsonResource.Get("size", bufferSize);
+				oJsonResource.Get("pointSize", pointSize);
 				osg::Vec3 bbMin, bbMax;
 				for (int j = 0; j < 3; ++j)
 				{
@@ -203,15 +205,14 @@ private:
 						resource3MXB.geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, osgVertices->size()));
 						resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
-						//float pointSize = 10.f;
-						//if (pointSize > 0)
-						//{
-						//	osg::ref_ptr<osg::Point> point = new osg::Point;
-						//	point->setDistanceAttenuation(osg::Vec3(1.0f, 0.0f, 0.01f));
-						//	point->setSize(pointSize);
-						//	resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
-						//	resource3MXB.geometry->getOrCreateStateSet()->setAttribute(point);
-						//}
+						if (pointSize > 0)
+						{
+							osg::ref_ptr<osg::Point> point = new osg::Point;
+							point->setDistanceAttenuation(osg::Vec3(1.0f, 0.0f, 0.01f));
+							point->setSize(pointSize);
+							resource3MXB.geometry->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
+							resource3MXB.geometry->getOrCreateStateSet()->setAttribute(point);
+						}
 					}
 				}
 			}
@@ -440,4 +441,4 @@ public:
 
 // now register with Registry to instantiate the above
 // reader/writer.
-REGISTER_OSGPLUGIN(3mxb, ReaderWriter3MXB)
+REGISTER_OSGPLUGIN(3mx, ReaderWriter3MXB)

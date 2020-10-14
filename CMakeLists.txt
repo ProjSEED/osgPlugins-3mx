@@ -26,7 +26,7 @@ include_directories("./cJsonObject/")
 
 # 3mx
 SET(TARGET_SRC 
-	ReaderWriter3MXB.cpp 
+	ReaderWriter3MX.cpp 
 	${CJSONOBJECT_SRC}
 	${LIBLZMA_SRC}
 	${OPENCTM_SRC}
@@ -39,7 +39,7 @@ SET(TARGET_H
 )
 
 #### end var setup  ###
-SETUP_PLUGIN(3mxb)
+SETUP_PLUGIN(3mx)
 
 
 
