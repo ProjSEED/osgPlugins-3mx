@@ -14,10 +14,10 @@ Load *[3mx/3mxb](https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-
 ### NOTE
 
 Add script to [osgPlugins/CMakeLists.txt] so that this plugin could be added to OpenSceneGraph.
-···
+```
 # about line: 150
 ADD_PLUGIN_DIRECTORY(3mx)
-···
+```
 
 Add file extension alias to [osgDB/Registry.cpp] so that both *[3mx/3mxb](https://docs.bentley.com/LiveContent/web/ContextCapture%20Help-v9/en/GUID-CED0ABE6-2EE3-458D-9810-D87EC3C521BD.html)* could be loaded.
 
