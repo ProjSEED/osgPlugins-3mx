@@ -190,15 +190,15 @@ private:
 						resource3MXB.geometry->setVertexArray(osgVertices);
 
 						char* colors = buffer.data() + 4 + vertCount * sizeof(float) * 3;
-						osg::ref_ptr<osg::Vec4bArray> osgColorsB = new osg::Vec4bArray(vertCount);
+						osg::ref_ptr<osg::Vec4ubArray> osgColorsB = new osg::Vec4ubArray(vertCount);
 						memcpy(&osgColorsB->asVector()[0], colors, vertCount * sizeof(char) * 4);
 						osg::Vec4Array* osgColorsF = new osg::Vec4Array(vertCount);
 						for (int k = 0; k < vertCount; ++k)
 						{
-							osgColorsF->asVector()[k].x() = osgColorsB->asVector()[k].x() / 255.0;
-							osgColorsF->asVector()[k].y() = osgColorsB->asVector()[k].y() / 255.0;
-							osgColorsF->asVector()[k].z() = osgColorsB->asVector()[k].z() / 255.0;
-							osgColorsF->asVector()[k].w() = osgColorsB->asVector()[k].w() / 255.0;
+							osgColorsF->asVector()[k].x() = osgColorsB->asVector()[k].x() / 255.f;
+							osgColorsF->asVector()[k].y() = osgColorsB->asVector()[k].y() / 255.f;
+							osgColorsF->asVector()[k].z() = osgColorsB->asVector()[k].z() / 255.f;
+							osgColorsF->asVector()[k].w() = osgColorsB->asVector()[k].w() / 255.f;
 						}
 						
 						resource3MXB.geometry->setColorArray(osgColorsF, osg::Vec4Array::BIND_PER_VERTEX);
