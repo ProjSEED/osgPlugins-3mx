@@ -413,7 +413,7 @@ public:
 				pagedLOD->setRangeMode(osg::PagedLOD::PIXEL_SIZE_ON_SCREEN);
 				pagedLOD->setCenterMode(osg::PagedLOD::USER_DEFINED_CENTER);
 				pagedLOD->setCenter((bbMin + bbMax) / 2.0f);
-				pagedLOD->setRadius(sqrt((bbMax - bbMin).length2() * 0.25f / 3.f));
+				pagedLOD->setRadius(sqrt((bbMax - bbMin).length2() * 0.25f));
 
 				if (nodeResourcesNum)
 				{
